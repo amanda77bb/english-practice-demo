@@ -112,6 +112,26 @@
       font-size: 14px;
       margin-bottom: 2px;
     }
+    .question-image-wrap {
+      display: none;
+      margin: 8px 0 4px;
+    }
+    .question-image-wrap.show {
+      display: block;
+    }
+    .question-image-wrap img {
+      width: 100%;
+      max-height: 420px;
+      object-fit: contain;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #fff;
+    }
+    .image-note {
+      color: var(--sub);
+      font-size: 13px;
+      margin-top: 8px;
+    }
     input[type="text"], textarea {
       flex: 1;
       min-width: 220px;
@@ -226,6 +246,10 @@
     <div class="card">
       <div class="meta" id="meta"></div>
       <div class="question" id="question"></div>
+      <div class="question-image-wrap" id="questionImageWrap">
+        <img id="questionImage" alt="题目配图" />
+        <div class="image-note" id="imageNote"></div>
+      </div>
       <div class="answer-area">
         <div class="mode-tip" id="modeTip"></div>
         <div id="textWrap" class="row">
@@ -265,6 +289,9 @@
     const $ = (id) => document.getElementById(id);
     const meta = $('meta');
     const question = $('question');
+    const questionImageWrap = $('questionImageWrap');
+    const questionImage = $('questionImage');
+    const imageNote = $('imageNote');
     const modeTip = $('modeTip');
     const answerInput = $('answerInput');
     const answerTextarea = $('answerTextarea');
@@ -344,7 +371,7 @@
         return `
           <div class="mini">
             <div>
-              <strong>${q.label}｜${q.type}</strong>
+              <strong>${q.label}｜${q.type}${q.image ? '｜带图' : ''}</strong>
               <span>已练 ${record.attempts} 次 · 做对 ${record.correctCount || 0} 次 · ${text}${hiddenTag}</span>
             </div>
             <button onclick="pickQuestion(${idx})">切到这题</button>
@@ -354,8 +381,9 @@
     }
 
     function renderChoiceButtons(q) {
-      choiceWrap.innerHTML = (q.options || []).map(opt => `
-        <button type="button" class="choice-btn ${selectedChoice === opt ? 'active' : ''}" onclick="pickChoice('${opt}')">${opt}</button>
+      const options = q.options || {};
+      choiceWrap.innerHTML = Object.entries(options).map(([key, value]) => `
+        <button type="button" class="choice-btn ${selectedChoice === key ? 'active' : ''}" onclick="pickChoice('${key}')">${key}. ${value}</button>
       `).join('');
     }
 
@@ -400,6 +428,7 @@
         textWrap.style.display = 'none';
         textareaWrap.style.display = 'none';
         choiceWrap.style.display = 'none';
+        questionImageWrap.className = 'question-image-wrap';
         return;
       }
       const record = getRecord(q.id);
@@ -412,6 +441,15 @@
       `;
       question.textContent = q.prompt;
       modeTip.textContent = q.instruction || '直接输入答案';
+      if (q.image) {
+        questionImageWrap.className = 'question-image-wrap show';
+        questionImage.src = q.image + '?_=' + Date.now();
+        imageNote.textContent = q.imageDescription || '先看图，再作答。';
+      } else {
+        questionImageWrap.className = 'question-image-wrap';
+        questionImage.removeAttribute('src');
+        imageNote.textContent = '';
+      }
       resultBox.className = 'result';
       attemptCount.textContent = record.attempts;
       lastResult.textContent = record.lastResult === 'correct' ? '做对' : record.lastResult === 'wrong' ? '做错' : '-';
@@ -441,15 +479,15 @@
       }
       const record = getRecord(q.id);
       const nextAttempts = record.attempts + 1;
-      const isCorrect = normalize(input) === normalize(q.answer);
+      const isCorrect = q.answerMode === 'choice' ? input === (q.correctChoice || q.answer) : normalize(input) === normalize(q.answer);
       const correctCount = (record.correctCount || 0) + (isCorrect ? 1 : 0);
       const hidden = correctCount >= 3;
       setRecord(q.id, { attempts: nextAttempts, lastResult: isCorrect ? 'correct' : 'wrong', correctCount, hidden });
 
       resultBox.className = `result show ${isCorrect ? 'ok' : 'bad'}`;
       resultTitle.textContent = isCorrect ? (hidden ? '这题累计做对 3 次，已自动隐藏。' : '这题做对了。') : '这题做错了。';
-      yourAnswer.textContent = input;
-      correctAnswer.textContent = q.answer;
+      yourAnswer.textContent = q.answerMode === 'choice' ? `${input}. ${q.options?.[input] || ''}` : input;
+      correctAnswer.textContent = q.answerMode === 'choice' ? `${q.correctChoice || q.answer}. ${q.options?.[q.correctChoice || q.answer] || ''}` : q.answer;
       knowledge.textContent = q.knowledge;
       reason.textContent = q.reason;
       attemptText.textContent = hidden ? `第 ${nextAttempts} 次（累计做对 ${correctCount} 次，已毕业隐藏）` : `第 ${nextAttempts} 次（累计做对 ${correctCount} 次）`;

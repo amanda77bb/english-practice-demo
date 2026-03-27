@@ -32,8 +32,15 @@
     "answer": "will you",
     "knowledge": "祈使句的反义疑问句常用 will you。",
     "reason": "祈使句后的反义疑问句判断不稳，把 will you 和 won't you 混用了。",
-    "answerMode": "blank",
-    "instruction": "把空格补完整"
+    "answerMode": "choice",
+    "instruction": "点击正确选项",
+    "options": {
+      "A": "will you",
+      "B": "won't you",
+      "C": "do you",
+      "D": "don't you"
+    },
+    "correctChoice": "A"
   },
   {
     "id": "recvf3CWwGei3q",
@@ -44,8 +51,15 @@
     "answer": "needn't",
     "knowledge": "Must 引导的一般疑问句，否定回答常用 needn't / don't have to。",
     "reason": "Must 提问的否定回答规则不稳，needn't / don't have to 这一组没形成自动反应。",
-    "answerMode": "blank",
-    "instruction": "把空格补完整"
+    "answerMode": "choice",
+    "instruction": "点击正确选项",
+    "options": {
+      "A": "mustn't",
+      "B": "can't",
+      "C": "needn't",
+      "D": "should"
+    },
+    "correctChoice": "C"
   },
   {
     "id": "recvf3CWwGXn4S",
@@ -56,8 +70,15 @@
     "answer": "had to",
     "knowledge": "过去发生的“不得不”要用 had to，不用 must。",
     "reason": "过去时间背景下，must 和 had to 区分不稳。",
-    "answerMode": "blank",
-    "instruction": "把空格补完整"
+    "answerMode": "choice",
+    "instruction": "点击正确选项",
+    "options": {
+      "A": "have to",
+      "B": "must",
+      "C": "had to",
+      "D": "can"
+    },
+    "correctChoice": "C"
   },
   {
     "id": "recvf3CWwG30Ge",
@@ -69,7 +90,9 @@
     "knowledge": "看图祈使句先判断语境是肯定命令还是否定命令。",
     "reason": "看图后只抓到动作 cross，没有抓到红灯亮起这一否定语境。",
     "answerMode": "blank",
-    "instruction": "把空格补完整"
+    "instruction": "先看图，再把空格补完整",
+    "image": "./assets/6b3_p1.jpg",
+    "imageDescription": "看图第8题：红灯亮着，孩子们站在斑马线前。"
   },
   {
     "id": "recvf3CWwGOfTd",
@@ -185,36 +208,38 @@
     "type": "阅读理解",
     "source": "校内作业",
     "label": "6B英语随堂练习2 阅读理解 第1题",
-    "prompt": "阅读理解第1题（已被老师改错）",
-    "answer": "D",
+    "prompt": "How did Dom learn to fix bikes?",
+    "answer": "B",
     "knowledge": "阅读理解先定位原文依据，再判断选项。",
     "reason": "阅读选择题定位不够稳，容易被干扰项带走。",
     "answerMode": "choice",
-    "instruction": "点击 A / B / C / D 作答",
-    "options": [
-      "A",
-      "B",
-      "C",
-      "D"
-    ]
+    "instruction": "点击正确选项",
+    "options": {
+      "A": "By asking his teachers for help",
+      "B": "By watching videos online",
+      "C": "By reading books about bikes",
+      "D": "By working in a bike shop"
+    },
+    "correctChoice": "B"
   },
   {
     "id": "recvf3DqXuwz64",
     "type": "阅读理解",
     "source": "校内作业",
     "label": "6B英语随堂练习2 阅读理解 第3题",
-    "prompt": "阅读理解第3题（已被老师改错）",
+    "prompt": "The author wrote the article mainly to ________.",
     "answer": "D",
     "knowledge": "阅读理解题必须能回原文找到证据句。",
     "reason": "能大概懂文章，但落到题目时不能稳定找到最直接证据。",
     "answerMode": "choice",
-    "instruction": "点击 A / B / C / D 作答",
-    "options": [
-      "A",
-      "B",
-      "C",
-      "D"
-    ]
+    "instruction": "点击正确选项",
+    "options": {
+      "A": "show the power of childhood dreams",
+      "B": "encourage readers to learn to fix bikes",
+      "C": "spread the word about Dom's bike shop",
+      "D": "tell Dom's story of creativity and kindness"
+    },
+    "correctChoice": "D"
   },
   {
     "id": "recvf3DqXupnFS",
