@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>英语错题线上练习 Demo</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2329;
+      --sub: #646a73;
+      --line: #e5e6eb;
+      --blue: #4c8bf5;
+      --green: #22b07d;
+      --orange: #ff9f43;
+      --red: #f04d4f;
+      --tag: #eef3ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.5;
+    }
+    .wrap {
+      width: min(980px, calc(100vw - 32px));
+      margin: 28px auto 48px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #4c8bf5, #7b61ff);
+      color: white;
+      border-radius: 24px;
+      padding: 28px 28px 22px;
+      box-shadow: 0 12px 32px rgba(76,139,245,.22);
+    }
+    .hero h1 { margin: 0 0 8px; font-size: 30px; }
+    .hero p { margin: 0; opacity: .92; }
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+    button {
+      border: 0;
+      background: var(--blue);
+      color: white;
+      padding: 11px 16px;
+      border-radius: 12px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.28);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin: 20px 0;
+    }
+    .stat {
+      background: var(--card);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 8px 20px rgba(31,35,41,.06);
+    }
+    .stat .label { color: var(--sub); font-size: 13px; }
+    .stat .value { font-size: 28px; font-weight: 700; margin-top: 6px; }
+    .card {
+      background: var(--card);
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 10px 24px rgba(31,35,41,.06);
+    }
+    .meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .tag {
+      background: var(--tag);
+      color: #3556a8;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .question {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 8px 0 18px;
+    }
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    input[type="text"] {
+      flex: 1;
+      min-width: 220px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      font-size: 16px;
+      outline: none;
+      background: #fff;
+    }
+    input[type="text"]:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(76,139,245,.1);
+    }
+    .result {
+      margin-top: 18px;
+      padding: 18px;
+      border-radius: 16px;
+      display: none;
+    }
+    .result.show { display: block; }
+    .ok { background: rgba(34,176,125,.10); border: 1px solid rgba(34,176,125,.22); }
+    .bad { background: rgba(240,77,79,.08); border: 1px solid rgba(240,77,79,.18); }
+    .result h3 { margin: 0 0 10px; }
+    .kv { margin: 7px 0; }
+    .kv b { display: inline-block; min-width: 96px; }
+    .hint {
+      margin-top: 16px;
+      color: var(--sub);
+      font-size: 14px;
+    }
+    .list {
+      margin-top: 18px;
+      display: grid;
+      gap: 12px;
+    }
+    .mini {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: center;
+    }
+    .mini strong { display: block; }
+    .mini span { color: var(--sub); font-size: 13px; }
+    .mini button { padding: 8px 12px; font-size: 13px; }
+    @media (max-width: 760px) {
+      .stats { grid-template-columns: 1fr; }
+      .question { font-size: 20px; }
+      .wrap { width: min(980px, calc(100vw - 20px)); margin-top: 16px; }
+      .hero, .card { padding: 18px; border-radius: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>英语错题线上练习 Demo</h1>
+      <p>先自己填，提交后再显示正确答案、知识点、错因提醒，以及这是第几次做这道题。</p>
+      <div class="toolbar">
+        <button class="secondary" id="resetAll">重置全部练习记录</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="label">题库题数</div>
+        <div class="value" id="totalCount">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">当前题已练次数</div>
+        <div class="value" id="attemptCount">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">当前题最近结果</div>
+        <div class="value" id="lastResult">-</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="meta" id="meta"></div>
+      <div class="question" id="question"></div>
+      <div class="row">
+        <input id="answerInput" type="text" placeholder="在这里填答案…" />
+        <button id="submitBtn">提交答案</button>
+        <button id="nextBtn">下一题</button>
+      </div>
+      <div class="result" id="resultBox">
+        <h3 id="resultTitle"></h3>
+        <div class="kv"><b>你的答案：</b><span id="yourAnswer"></span></div>
+        <div class="kv"><b>正确答案：</b><span id="correctAnswer"></span></div>
+        <div class="kv"><b>知识点：</b><span id="knowledge"></span></div>
+        <div class="kv"><b>错因提醒：</b><span id="reason"></span></div>
+        <div class="kv"><b>第几次做：</b><span id="attemptText"></span></div>
+        <div class="hint">这个 demo 现在是本地记次数：同一浏览器里会记住练习次数。后面可以再接飞书题库，做成正式版。</div>
+      </div>
+    </div>
+
+    <div class="list" id="questionList"></div>
+  </div>
+
+  <script>
+    const questions = [
+      {
+        id: 'ENG-20260327-001',
+        type: '情景交际',
+        source: '校内作业',
+        prompt: '— Could you help me with my English homework?  ___',
+        answer: 'Sure',
+        knowledge: '情景交际里，请求帮助时要优先匹配自然、得体的回应。',
+        reason: '容易看懂意思，但不一定能稳定选出最自然的场景回应。'
+      },
+      {
+        id: 'ENG-20260327-002',
+        type: '语法与词汇运用',
+        source: '校内作业',
+        prompt: "What’s wrong ___ the girl’s answer?",
+        answer: 'with',
+        knowledge: '固定搭配：What’s wrong with ...',
+        reason: '介词搭配不够自动化，容易靠感觉选。'
+      }
+    ];
+
+    const stateKey = 'english-practice-demo-v1';
+    const saved = JSON.parse(localStorage.getItem(stateKey) || '{}');
+    let currentIndex = 0;
+
+    const $ = (id) => document.getElementById(id);
+    const meta = $('meta');
+    const question = $('question');
+    const answerInput = $('answerInput');
+    const resultBox = $('resultBox');
+    const resultTitle = $('resultTitle');
+    const yourAnswer = $('yourAnswer');
+    const correctAnswer = $('correctAnswer');
+    const knowledge = $('knowledge');
+    const reason = $('reason');
+    const attemptText = $('attemptText');
+    const totalCount = $('totalCount');
+    const attemptCount = $('attemptCount');
+    const lastResult = $('lastResult');
+    const questionList = $('questionList');
+
+    totalCount.textContent = questions.length;
+
+    function getRecord(id) {
+      return saved[id] || { attempts: 0, lastResult: null };
+    }
+
+    function setRecord(id, data) {
+      saved[id] = { ...getRecord(id), ...data };
+      localStorage.setItem(stateKey, JSON.stringify(saved));
+    }
+
+    function updateSideList() {
+      questionList.innerHTML = questions.map((q, idx) => {
+        const record = getRecord(q.id);
+        const text = record.lastResult === 'correct' ? '最近：做对' : record.lastResult === 'wrong' ? '最近：做错' : '还没做';
+        return `
+          <div class="mini">
+            <div>
+              <strong>${q.id}｜${q.type}</strong>
+              <span>已练 ${record.attempts} 次 · ${text}</span>
+            </div>
+            <button onclick="pickQuestion(${idx})">切到这题</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderQuestion() {
+      const q = questions[currentIndex];
+      const record = getRecord(q.id);
+      meta.innerHTML = `
+        <span class="tag">${q.id}</span>
+        <span class="tag">${q.type}</span>
+        <span class="tag">${q.source}</span>
+      `;
+      question.textContent = q.prompt;
+      answerInput.value = '';
+      resultBox.className = 'result';
+      attemptCount.textContent = record.attempts;
+      lastResult.textContent = record.lastResult === 'correct' ? '做对' : record.lastResult === 'wrong' ? '做错' : '-';
+      answerInput.focus();
+    }
+
+    function normalize(s) {
+      return String(s || '').trim().toLowerCase();
+    }
+
+    function submitAnswer() {
+      const q = questions[currentIndex];
+      const input = answerInput.value.trim();
+      if (!input) {
+        answerInput.focus();
+        return;
+      }
+      const record = getRecord(q.id);
+      const nextAttempts = record.attempts + 1;
+      const isCorrect = normalize(input) === normalize(q.answer);
+      setRecord(q.id, { attempts: nextAttempts, lastResult: isCorrect ? 'correct' : 'wrong' });
+
+      resultBox.className = `result show ${isCorrect ? 'ok' : 'bad'}`;
+      resultTitle.textContent = isCorrect ? '这题做对了。' : '这题做错了。';
+      yourAnswer.textContent = input;
+      correctAnswer.textContent = q.answer;
+      knowledge.textContent = q.knowledge;
+      reason.textContent = q.reason;
+      attemptText.textContent = `第 ${nextAttempts} 次`;
+      attemptCount.textContent = nextAttempts;
+      lastResult.textContent = isCorrect ? '做对' : '做错';
+      updateSideList();
+    }
+
+    function nextQuestion() {
+      currentIndex = (currentIndex + 1) % questions.length;
+      renderQuestion();
+    }
+
+    window.pickQuestion = function(idx) {
+      currentIndex = idx;
+      renderQuestion();
+    }
+
+    $('submitBtn').addEventListener('click', submitAnswer);
+    $('nextBtn').addEventListener('click', nextQuestion);
+    $('resetAll').addEventListener('click', () => {
+      localStorage.removeItem(stateKey);
+      location.reload();
+    });
+    answerInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitAnswer();
+    });
+
+    updateSideList();
+    renderQuestion();
+  </script>
+</body>
+</html>
