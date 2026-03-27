@@ -59,7 +59,7 @@
     }
     .stats {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 14px;
       margin: 20px 0;
     }
@@ -102,7 +102,17 @@
       flex-wrap: wrap;
       align-items: center;
     }
-    input[type="text"] {
+    .answer-area {
+      display: grid;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .mode-tip {
+      color: var(--sub);
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+    input[type="text"], textarea {
       flex: 1;
       min-width: 220px;
       padding: 14px 16px;
@@ -111,10 +121,33 @@
       font-size: 16px;
       outline: none;
       background: #fff;
+      font-family: inherit;
     }
-    input[type="text"]:focus {
+    textarea {
+      width: 100%;
+      min-height: 108px;
+      resize: vertical;
+    }
+    input[type="text"]:focus, textarea:focus {
       border-color: var(--blue);
       box-shadow: 0 0 0 4px rgba(76,139,245,.1);
+    }
+    .choices {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .choice-btn {
+      background: #fff;
+      color: var(--text);
+      border: 1px solid var(--line);
+      min-width: 64px;
+      font-weight: 700;
+    }
+    .choice-btn.active {
+      background: var(--blue);
+      color: #fff;
+      border-color: var(--blue);
     }
     .result {
       margin-top: 18px;
@@ -165,6 +198,8 @@
       <h1>英语错题线上练习 Demo</h1>
       <p>先自己填，提交后再显示正确答案、知识点、错因提醒，以及这是第几次做这道题。</p>
       <div class="toolbar">
+        <button class="secondary" id="toggleHiddenBtn">显示已隐藏题</button>
+        <button class="secondary" id="restoreHiddenBtn">恢复全部题目</button>
         <button class="secondary" id="resetAll">重置全部练习记录</button>
       </div>
     </div>
@@ -182,15 +217,28 @@
         <div class="label">当前题最近结果</div>
         <div class="value" id="lastResult">-</div>
       </div>
+      <div class="stat">
+        <div class="label">已隐藏题数</div>
+        <div class="value" id="hiddenCount">0</div>
+      </div>
     </div>
 
     <div class="card">
       <div class="meta" id="meta"></div>
       <div class="question" id="question"></div>
-      <div class="row">
-        <input id="answerInput" type="text" placeholder="在这里填答案…" />
-        <button id="submitBtn">提交答案</button>
-        <button id="nextBtn">下一题</button>
+      <div class="answer-area">
+        <div class="mode-tip" id="modeTip"></div>
+        <div id="textWrap" class="row">
+          <input id="answerInput" type="text" placeholder="在这里填答案…" />
+        </div>
+        <div id="textareaWrap" style="display:none;">
+          <textarea id="answerTextarea" placeholder="在这里写答案…"></textarea>
+        </div>
+        <div id="choiceWrap" class="choices" style="display:none;"></div>
+        <div class="row">
+          <button id="submitBtn">提交答案</button>
+          <button id="nextBtn">下一题</button>
+        </div>
       </div>
       <div class="result" id="resultBox">
         <h3 id="resultTitle"></h3>
@@ -208,14 +256,21 @@
 
   <script>
     let questions = [];
-    const stateKey = 'english-practice-demo-v2';
+    const stateKey = 'english-practice-demo-v4';
     const saved = JSON.parse(localStorage.getItem(stateKey) || '{}');
     let currentIndex = 0;
+    let selectedChoice = '';
+    let showHidden = false;
 
     const $ = (id) => document.getElementById(id);
     const meta = $('meta');
     const question = $('question');
+    const modeTip = $('modeTip');
     const answerInput = $('answerInput');
+    const answerTextarea = $('answerTextarea');
+    const textWrap = $('textWrap');
+    const textareaWrap = $('textareaWrap');
+    const choiceWrap = $('choiceWrap');
     const resultBox = $('resultBox');
     const resultTitle = $('resultTitle');
     const yourAnswer = $('yourAnswer');
@@ -226,10 +281,13 @@
     const totalCount = $('totalCount');
     const attemptCount = $('attemptCount');
     const lastResult = $('lastResult');
+    const hiddenCount = $('hiddenCount');
     const questionList = $('questionList');
+    const toggleHiddenBtn = $('toggleHiddenBtn');
+    const restoreHiddenBtn = $('restoreHiddenBtn');
 
     function getRecord(id) {
-      return saved[id] || { attempts: 0, lastResult: null };
+      return saved[id] || { attempts: 0, lastResult: null, correctCount: 0, hidden: false };
     }
 
     function setRecord(id, data) {
@@ -237,19 +295,57 @@
       localStorage.setItem(stateKey, JSON.stringify(saved));
     }
 
+    function visibleQuestions() {
+      return questions.filter(q => showHidden || !getRecord(q.id).hidden);
+    }
+
+    function allHiddenCount() {
+      return questions.filter(q => getRecord(q.id).hidden).length;
+    }
+
+    function ensureCurrentIndexValid() {
+      const visible = visibleQuestions();
+      if (!visible.length) {
+        currentIndex = 0;
+        return;
+      }
+      if (currentIndex >= visible.length) currentIndex = 0;
+    }
+
+    function currentQuestion() {
+      const visible = visibleQuestions();
+      if (!visible.length) return null;
+      ensureCurrentIndexValid();
+      return visible[currentIndex];
+    }
+
+    function refreshToolbar() {
+      hiddenCount.textContent = allHiddenCount();
+      toggleHiddenBtn.textContent = showHidden ? '只看未隐藏题' : '显示已隐藏题';
+      restoreHiddenBtn.disabled = allHiddenCount() === 0;
+      restoreHiddenBtn.style.opacity = allHiddenCount() === 0 ? '.55' : '1';
+      totalCount.textContent = visibleQuestions().length;
+    }
+
     function updateSideList() {
       if (!questions.length) {
         questionList.innerHTML = '<div class="mini"><div><strong>题库加载中…</strong><span>请稍等</span></div></div>';
         return;
       }
-      questionList.innerHTML = questions.map((q, idx) => {
+      const visible = visibleQuestions();
+      if (!visible.length) {
+        questionList.innerHTML = '<div class="mini"><div><strong>太好了，当前题都毕业了</strong><span>你可以点“显示已隐藏题”回看，或点“恢复全部题目”重新开始。</span></div></div>';
+        return;
+      }
+      questionList.innerHTML = visible.map((q, idx) => {
         const record = getRecord(q.id);
         const text = record.lastResult === 'correct' ? '最近：做对' : record.lastResult === 'wrong' ? '最近：做错' : '还没做';
+        const hiddenTag = record.hidden ? ' · 已隐藏' : '';
         return `
           <div class="mini">
             <div>
               <strong>${q.label}｜${q.type}</strong>
-              <span>已练 ${record.attempts} 次 · ${text}</span>
+              <span>已练 ${record.attempts} 次 · 做对 ${record.correctCount || 0} 次 · ${text}${hiddenTag}</span>
             </div>
             <button onclick="pickQuestion(${idx})">切到这题</button>
           </div>
@@ -257,61 +353,128 @@
       }).join('');
     }
 
+    function renderChoiceButtons(q) {
+      choiceWrap.innerHTML = (q.options || []).map(opt => `
+        <button type="button" class="choice-btn ${selectedChoice === opt ? 'active' : ''}" onclick="pickChoice('${opt}')">${opt}</button>
+      `).join('');
+    }
+
+    function renderAnswerUI(q) {
+      selectedChoice = '';
+      textWrap.style.display = 'none';
+      textareaWrap.style.display = 'none';
+      choiceWrap.style.display = 'none';
+      answerInput.value = '';
+      answerTextarea.value = '';
+
+      if (q.answerMode === 'choice') {
+        choiceWrap.style.display = 'flex';
+        renderChoiceButtons(q);
+      } else if (q.answerMode === 'short_answer') {
+        textareaWrap.style.display = 'block';
+        answerTextarea.placeholder = '用短语或完整句作答…';
+      } else {
+        textWrap.style.display = 'flex';
+        answerInput.placeholder = q.answerMode === 'initial' ? `按提示补全：${q.initialHint || ''}` : '在这里填答案…';
+      }
+    }
+
     function renderQuestion() {
+      refreshToolbar();
       if (!questions.length) {
         meta.innerHTML = '<span class="tag">题库加载中</span>';
         question.textContent = '正在读取第一版线上练习题库…';
+        modeTip.textContent = '';
         attemptCount.textContent = '0';
         lastResult.textContent = '-';
         return;
       }
-      const q = questions[currentIndex];
+      const q = currentQuestion();
+      if (!q) {
+        meta.innerHTML = '<span class="tag">当前没有可练题目</span>';
+        question.textContent = '这一轮题目都已经累计做对 3 次并自动隐藏了。';
+        modeTip.textContent = '你可以点“显示已隐藏题”回看，或者点“恢复全部题目”重新开始。';
+        resultBox.className = 'result';
+        attemptCount.textContent = '0';
+        lastResult.textContent = '毕业';
+        textWrap.style.display = 'none';
+        textareaWrap.style.display = 'none';
+        choiceWrap.style.display = 'none';
+        return;
+      }
       const record = getRecord(q.id);
       meta.innerHTML = `
         <span class="tag">${q.label}</span>
         <span class="tag">${q.type}</span>
         <span class="tag">${q.source}</span>
+        <span class="tag">累计做对 ${record.correctCount || 0} / 3</span>
+        ${record.hidden ? '<span class="tag">已隐藏</span>' : ''}
       `;
       question.textContent = q.prompt;
-      answerInput.value = '';
+      modeTip.textContent = q.instruction || '直接输入答案';
       resultBox.className = 'result';
       attemptCount.textContent = record.attempts;
       lastResult.textContent = record.lastResult === 'correct' ? '做对' : record.lastResult === 'wrong' ? '做错' : '-';
-      answerInput.focus();
+      renderAnswerUI(q);
+      if (q.answerMode === 'short_answer') answerTextarea.focus();
+      else if (q.answerMode !== 'choice') answerInput.focus();
     }
 
     function normalize(s) {
       return String(s || '').trim().toLowerCase().replace(/[“”"'.,!?]/g, '');
     }
 
+    function getUserAnswer(q) {
+      if (q.answerMode === 'choice') return selectedChoice;
+      if (q.answerMode === 'short_answer') return answerTextarea.value.trim();
+      return answerInput.value.trim();
+    }
+
     function submitAnswer() {
-      if (!questions.length) return;
-      const q = questions[currentIndex];
-      const input = answerInput.value.trim();
+      const q = currentQuestion();
+      if (!q) return;
+      const input = getUserAnswer(q);
       if (!input) {
-        answerInput.focus();
+        if (q.answerMode === 'short_answer') answerTextarea.focus();
+        else if (q.answerMode !== 'choice') answerInput.focus();
         return;
       }
       const record = getRecord(q.id);
       const nextAttempts = record.attempts + 1;
       const isCorrect = normalize(input) === normalize(q.answer);
-      setRecord(q.id, { attempts: nextAttempts, lastResult: isCorrect ? 'correct' : 'wrong' });
+      const correctCount = (record.correctCount || 0) + (isCorrect ? 1 : 0);
+      const hidden = correctCount >= 3;
+      setRecord(q.id, { attempts: nextAttempts, lastResult: isCorrect ? 'correct' : 'wrong', correctCount, hidden });
 
       resultBox.className = `result show ${isCorrect ? 'ok' : 'bad'}`;
-      resultTitle.textContent = isCorrect ? '这题做对了。' : '这题做错了。';
+      resultTitle.textContent = isCorrect ? (hidden ? '这题累计做对 3 次，已自动隐藏。' : '这题做对了。') : '这题做错了。';
       yourAnswer.textContent = input;
       correctAnswer.textContent = q.answer;
       knowledge.textContent = q.knowledge;
       reason.textContent = q.reason;
-      attemptText.textContent = `第 ${nextAttempts} 次`;
+      attemptText.textContent = hidden ? `第 ${nextAttempts} 次（累计做对 ${correctCount} 次，已毕业隐藏）` : `第 ${nextAttempts} 次（累计做对 ${correctCount} 次）`;
       attemptCount.textContent = nextAttempts;
       lastResult.textContent = isCorrect ? '做对' : '做错';
+      refreshToolbar();
       updateSideList();
+
+      if (hidden && !showHidden) {
+        setTimeout(() => {
+          const visible = visibleQuestions();
+          if (visible.length) {
+            if (currentIndex >= visible.length) currentIndex = 0;
+          } else {
+            currentIndex = 0;
+          }
+          renderQuestion();
+        }, 900);
+      }
     }
 
     function nextQuestion() {
-      if (!questions.length) return;
-      currentIndex = (currentIndex + 1) % questions.length;
+      const visible = visibleQuestions();
+      if (!visible.length) return;
+      currentIndex = (currentIndex + 1) % visible.length;
       renderQuestion();
     }
 
@@ -320,11 +483,17 @@
       renderQuestion();
     }
 
+    window.pickChoice = function(opt) {
+      selectedChoice = opt;
+      const q = currentQuestion();
+      if (q) renderChoiceButtons(q);
+    }
+
     async function loadQuestions() {
       try {
         const res = await fetch('./questions.json?_=' + Date.now());
         questions = await res.json();
-        totalCount.textContent = questions.length;
+        refreshToolbar();
         updateSideList();
         renderQuestion();
       } catch (e) {
@@ -336,6 +505,22 @@
 
     $('submitBtn').addEventListener('click', submitAnswer);
     $('nextBtn').addEventListener('click', nextQuestion);
+    toggleHiddenBtn.addEventListener('click', () => {
+      showHidden = !showHidden;
+      currentIndex = 0;
+      updateSideList();
+      renderQuestion();
+    });
+    restoreHiddenBtn.addEventListener('click', () => {
+      Object.keys(saved).forEach(id => {
+        saved[id] = { ...getRecord(id), hidden: false, correctCount: 0, attempts: 0, lastResult: null };
+      });
+      localStorage.setItem(stateKey, JSON.stringify(saved));
+      showHidden = false;
+      currentIndex = 0;
+      updateSideList();
+      renderQuestion();
+    });
     $('resetAll').addEventListener('click', () => {
       localStorage.removeItem(stateKey);
       location.reload();
@@ -343,7 +528,11 @@
     answerInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') submitAnswer();
     });
+    answerTextarea.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') submitAnswer();
+    });
 
+    refreshToolbar();
     updateSideList();
     renderQuestion();
     loadQuestions();
