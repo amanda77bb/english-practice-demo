@@ -207,28 +207,8 @@
   </div>
 
   <script>
-    const questions = [
-      {
-        id: 'ENG-20260327-001',
-        type: '情景交际',
-        source: '校内作业',
-        prompt: '— Could you help me with my English homework?  ___',
-        answer: 'Sure',
-        knowledge: '情景交际里，请求帮助时要优先匹配自然、得体的回应。',
-        reason: '容易看懂意思，但不一定能稳定选出最自然的场景回应。'
-      },
-      {
-        id: 'ENG-20260327-002',
-        type: '语法与词汇运用',
-        source: '校内作业',
-        prompt: "What’s wrong ___ the girl’s answer?",
-        answer: 'with',
-        knowledge: '固定搭配：What’s wrong with ...',
-        reason: '介词搭配不够自动化，容易靠感觉选。'
-      }
-    ];
-
-    const stateKey = 'english-practice-demo-v1';
+    let questions = [];
+    const stateKey = 'english-practice-demo-v2';
     const saved = JSON.parse(localStorage.getItem(stateKey) || '{}');
     let currentIndex = 0;
 
@@ -248,8 +228,6 @@
     const lastResult = $('lastResult');
     const questionList = $('questionList');
 
-    totalCount.textContent = questions.length;
-
     function getRecord(id) {
       return saved[id] || { attempts: 0, lastResult: null };
     }
@@ -260,13 +238,17 @@
     }
 
     function updateSideList() {
+      if (!questions.length) {
+        questionList.innerHTML = '<div class="mini"><div><strong>题库加载中…</strong><span>请稍等</span></div></div>';
+        return;
+      }
       questionList.innerHTML = questions.map((q, idx) => {
         const record = getRecord(q.id);
         const text = record.lastResult === 'correct' ? '最近：做对' : record.lastResult === 'wrong' ? '最近：做错' : '还没做';
         return `
           <div class="mini">
             <div>
-              <strong>${q.id}｜${q.type}</strong>
+              <strong>${q.label}｜${q.type}</strong>
               <span>已练 ${record.attempts} 次 · ${text}</span>
             </div>
             <button onclick="pickQuestion(${idx})">切到这题</button>
@@ -276,10 +258,17 @@
     }
 
     function renderQuestion() {
+      if (!questions.length) {
+        meta.innerHTML = '<span class="tag">题库加载中</span>';
+        question.textContent = '正在读取第一版线上练习题库…';
+        attemptCount.textContent = '0';
+        lastResult.textContent = '-';
+        return;
+      }
       const q = questions[currentIndex];
       const record = getRecord(q.id);
       meta.innerHTML = `
-        <span class="tag">${q.id}</span>
+        <span class="tag">${q.label}</span>
         <span class="tag">${q.type}</span>
         <span class="tag">${q.source}</span>
       `;
@@ -292,10 +281,11 @@
     }
 
     function normalize(s) {
-      return String(s || '').trim().toLowerCase();
+      return String(s || '').trim().toLowerCase().replace(/[“”"'.,!?]/g, '');
     }
 
     function submitAnswer() {
+      if (!questions.length) return;
       const q = questions[currentIndex];
       const input = answerInput.value.trim();
       if (!input) {
@@ -320,6 +310,7 @@
     }
 
     function nextQuestion() {
+      if (!questions.length) return;
       currentIndex = (currentIndex + 1) % questions.length;
       renderQuestion();
     }
@@ -327,6 +318,20 @@
     window.pickQuestion = function(idx) {
       currentIndex = idx;
       renderQuestion();
+    }
+
+    async function loadQuestions() {
+      try {
+        const res = await fetch('./questions.json?_=' + Date.now());
+        questions = await res.json();
+        totalCount.textContent = questions.length;
+        updateSideList();
+        renderQuestion();
+      } catch (e) {
+        meta.innerHTML = '<span class="tag">加载失败</span>';
+        question.textContent = '题库加载失败，请稍后刷新重试。';
+        questionList.innerHTML = '<div class="mini"><div><strong>题库加载失败</strong><span>请检查 questions.json 是否存在</span></div></div>';
+      }
     }
 
     $('submitBtn').addEventListener('click', submitAnswer);
@@ -341,6 +346,7 @@
 
     updateSideList();
     renderQuestion();
+    loadQuestions();
   </script>
 </body>
 </html>
